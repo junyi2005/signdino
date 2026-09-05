@@ -1,0 +1,19 @@
+# core SSL training
+torch>=2.6
+torchvision>=0.21
+numpy
+pyyaml
+tqdm
+
+# detector-first crop pipeline (YOLOv8n + ByteTrack)
+ultralytics>=8.2
+opencv-python
+pillow
+
+# downstream translation / ISLR / fingerspelling
+transformers>=4.45          # ByT5-Base decoder
+sacrebleu>=2.4              # BLEU-4
+bleurt-pytorch              # BLEURT-20
+
+# paper figures (optional)
+matplotlib>=3.8

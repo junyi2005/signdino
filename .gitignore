@@ -1,0 +1,22 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+.ipynb_checkpoints/
+
+# experiment output
+runs/
+logs/
+outputs/
+wandb/
+*.pt
+*.pth
+*.ckpt
+
+# data and caches
+data/*/
+!data/*.py
+.embedding_cache/
+*.zarr/
+
+.DS_Store
+.venv/

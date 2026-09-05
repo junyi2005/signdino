@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SignDino: Self-Supervised Sign Language Representation Learning via Temporal-Axis Self-Distillation</title>
+<meta name="description" content="SignDino moves the DINOv3 student-teacher recipe from the spatial domain of image crops to the temporal domain of tracked sign streams.">
+<meta property="og:title" content="SignDino: Temporal-Axis Self-Distillation for Sign Language">
+<meta property="og:description" content="Self-supervised sign language representation learning. New state of the art on How2Sign, OpenASL, ASL Citizen, Sem-Lex, WLASL2000 and ASL-STEM-Wiki.">
+<meta property="og:image" content="static/insight.png">
+<meta property="og:type" content="website">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>&#128075;</text></svg>">
+<style>
+  :root {
+    --bg:        #ffffff;
+    --bg-soft:   #f6f7f9;
+    --bg-inset:  #eef1f5;
+    --fg:        #16191d;
+    --fg-muted:  #5b6470;
+    --fg-faint:  #8a929d;
+    --rule:      #e0e4ea;
+    --accent:    #5E35B1;
+    --accent-2:  #1F4E79;
+    --accent-soft: #f1ecfb;
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+    --serif: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, "Times New Roman", serif;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, Helvetica, Arial, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg:      #0f1216;
+      --bg-soft: #161b21;
+      --bg-inset:#1c222a;
+      --fg:      #e8ecf1;
+      --fg-muted:#a6b0bd;
+      --fg-faint:#79838f;
+      --rule:    #29313b;
+      --accent:  #b39ddb;
+      --accent-2:#7fb2e5;
+      --accent-soft: #1e1a2b;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg:      #0f1216;
+    --bg-soft: #161b21;
+    --bg-inset:#1c222a;
+    --fg:      #e8ecf1;
+    --fg-muted:#a6b0bd;
+    --fg-faint:#79838f;
+    --rule:    #29313b;
+    --accent:  #b39ddb;
+    --accent-2:#7fb2e5;
+    --accent-soft: #1e1a2b;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--fg);
+    font-family: var(--sans);
+    font-size: 16px;
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 860px; margin: 0 auto; padding: 0 20px; }
+
+  /* ---------- header ---------- */
+  header {
+    padding: 64px 0 36px;
+    text-align: center;
+    border-bottom: 1px solid var(--rule);
+  }
+  h1 {
+    font-family: var(--serif);
+    font-weight: 600;
+    font-size: clamp(26px, 4.4vw, 40px);
+    line-height: 1.2;
+    letter-spacing: -0.01em;
+    margin: 0 0 6px;
+  }
+  h1 .name { color: var(--accent); }
+  .subtitle {
+    font-family: var(--serif);
+    font-size: clamp(17px, 2.4vw, 22px);
+    color: var(--fg-muted);
+    margin: 0 0 26px;
+    line-height: 1.35;
+  }
+  .authors {
+    font-size: 16.5px;
+    margin: 0 0 4px;
+    line-height: 1.9;
+  }
+  .authors a { color: inherit; text-decoration: none; border-bottom: 1px solid var(--rule); }
+  .authors a:hover { border-bottom-color: var(--accent); }
+  .affil { color: var(--fg-muted); font-size: 15px; margin: 0 0 2px; }
+  .corr  { color: var(--fg-faint); font-size: 13.5px; margin: 0; }
+
+  .links { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin-top: 26px; }
+  .btn {
+    display: inline-flex; align-items: center; gap: 7px;
+    padding: 9px 17px;
+    border-radius: 999px;
+    background: var(--fg);
+    color: var(--bg);
+    text-decoration: none;
+    font-size: 14.5px;
+    font-weight: 500;
+    transition: transform .12s ease, opacity .12s ease;
+  }
+  .btn:hover { transform: translateY(-1px); opacity: .87; }
+  .btn.ghost {
+    background: transparent;
+    color: var(--fg);
+    border: 1px solid var(--rule);
+  }
+  .btn svg { width: 15px; height: 15px; fill: currentColor; }
+
+  /* ---------- sections ---------- */
+  section { padding: 44px 0; border-bottom: 1px solid var(--rule); }
+  section:last-of-type { border-bottom: none; }
+  h2 {
+    font-family: var(--serif);
+    font-size: 25px;
+    font-weight: 600;
+    letter-spacing: -0.005em;
+    margin: 0 0 16px;
+  }
+  h3 {
+    font-size: 15px;
+    font-weight: 650;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    color: var(--fg-muted);
+    margin: 30px 0 10px;
+  }
+  p { margin: 0 0 15px; }
+  a { color: var(--accent-2); }
+
+  .lead { font-size: 17px; }
+  em.term { font-style: normal; color: var(--accent); font-weight: 600; }
+
+  figure { margin: 26px 0 8px; }
+  figure img {
+    width: 100%; height: auto; display: block;
+    border: 1px solid var(--rule);
+    border-radius: 8px;
+    background: #fff;
+  }
+  figcaption {
+    font-size: 14px;
+    color: var(--fg-muted);
+    margin-top: 10px;
+    line-height: 1.55;
+  }
+  figcaption b { color: var(--fg); font-weight: 600; }
+
+  /* ---------- pillars ---------- */
+  .pillars { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; margin-top: 22px; }
+  .pillar { background: var(--bg-soft); border: 1px solid var(--rule); border-radius: 10px; padding: 16px 17px; }
+  .pillar h4 { margin: 0 0 6px; font-size: 15px; font-weight: 650; }
+  .pillar p  { margin: 0; font-size: 14.5px; color: var(--fg-muted); line-height: 1.55; }
+  .pillar .n { display:block; font-family: var(--mono); font-size: 12px; color: var(--accent); margin-bottom: 8px; }
+
+  /* ---------- tables ---------- */
+  .tablewrap { overflow-x: auto; margin: 18px 0 6px; }
+  table { border-collapse: collapse; width: 100%; font-size: 14.5px; min-width: 520px; }
+  caption { caption-side: bottom; text-align: left; font-size: 13.5px; color: var(--fg-muted); padding-top: 10px; }
+  th, td { padding: 8px 12px; text-align: right; border-bottom: 1px solid var(--rule); }
+  th:first-child, td:first-child { text-align: left; }
+  thead th { font-size: 12.5px; text-transform: uppercase; letter-spacing: .05em; color: var(--fg-muted); font-weight: 600; border-bottom: 1.5px solid var(--rule); }
+  tbody tr:last-child td { border-bottom: 1.5px solid var(--rule); }
+  td.ours { color: var(--accent); font-weight: 650; }
+  tr.oursrow { background: var(--accent-soft); }
+  .delta { font-family: var(--mono); font-size: 13px; color: var(--fg-faint); }
+
+  /* ---------- code ---------- */
+  pre {
+    background: var(--bg-inset);
+    border: 1px solid var(--rule);
+    border-radius: 8px;
+    padding: 15px 17px;
+    overflow-x: auto;
+    font-family: var(--mono);
+    font-size: 13px;
+    line-height: 1.65;
+    margin: 14px 0;
+  }
+  code { font-family: var(--mono); font-size: .93em; }
+  p code, li code { background: var(--bg-inset); padding: 1.5px 5px; border-radius: 4px; }
+
+  ul { margin: 0 0 15px; padding-left: 22px; }
+  li { margin-bottom: 7px; }
+
+  footer { padding: 34px 0 60px; color: var(--fg-faint); font-size: 14px; text-align: center; }
+  footer a { color: var(--fg-muted); }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <h1><span class="name">SignDino</span></h1>
+    <p class="subtitle">Self-Supervised Sign Language Representation Learning<br>via Temporal-Axis Self-Distillation</p>
+
+    <p class="authors">
+      Junyi Hu &nbsp;·&nbsp; Zhewen He &nbsp;·&nbsp; Haomian Huang &nbsp;·&nbsp;
+      Zhenghua Li &nbsp;·&nbsp; Zhifei Li &nbsp;·&nbsp; Yi Fang<sup>†</sup>
+    </p>
+    <p class="affil">New York University Abu Dhabi</p>
+    <p class="corr"><sup>†</sup> corresponding author &nbsp;·&nbsp; <a href="mailto:jh10472@nyu.edu">jh10472@nyu.edu</a></p>
+
+    <nav class="links">
+      <a class="btn" href="signdino.pdf">
+        <svg viewBox="0 0 16 16"><path d="M4 1h5l3 3v11H4V1zm5 1v3h3"/></svg>
+        Paper (PDF)
+      </a>
+      <a class="btn ghost" href="https://github.com/junyi2005/signdino">
+        <svg viewBox="0 0 16 16"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+        Code
+      </a>
+      <a class="btn ghost" href="#citation">
+        <svg viewBox="0 0 16 16"><path d="M2 3h12v2H2V3zm0 4h12v2H2V7zm0 4h8v2H2v-2z"/></svg>
+        BibTeX
+      </a>
+    </nav>
+  </div>
+</header>
+
+<div class="wrap">
+
+<section>
+  <figure>
+    <img src="static/insight.png" alt="Left: image DINOv3 samples spatial global and local crops inside a single image. Right: SignDino samples temporal global and local crops along the tracked left-hand, right-hand and face rows of a single anatomical stream.">
+    <figcaption><b>The local–global distillation game, moved from image space to the time axis.</b>
+      Image DINOv3 (left) samples spatial global and local crops inside one image. SignDino (right)
+      samples <em>temporal</em> global (<code>T<sub>g</sub> ∈ [64, 96]</code>) and local
+      (<code>T<sub>l</sub> ∈ [10, 32]</code>) crops along the tracked hand and face rows of a single
+      anatomical stream, with iBOT masks on a few frame slots inside the local crop.</figcaption>
+  </figure>
+</section>
+
+<section id="abstract">
+  <h2>Abstract</h2>
+  <p class="lead">Self-supervised sign language representation learning must model two properties
+    that are not central to natural-image SSL: signs are produced by a small set of anatomically
+    distinct articulators, and their meaning depends on the temporal organisation of those
+    articulators.</p>
+  <p>We introduce <b>SignDino</b>, a self-supervised sign-video encoder that moves the DINOv3
+    student–teacher recipe from the spatial domain of image crops to the temporal domain of tracked
+    sign streams. Each video is decomposed into left-hand, right-hand and face streams by a
+    detector-first YOLOv8n + ByteTrack pipeline. A <em class="term">frozen</em> DINOv3 ViT-B/16 embeds
+    each per-frame anatomical crop, while lightweight temporal Transformers — not the image backbone —
+    form the student and EMA teacher, trained by temporal DINO self-distillation, frame-level
+    masked-token prediction in the style of iBOT, KoLeo feature spreading, and Gram anchoring of the
+    frame-to-frame similarity structure. This design keeps strong image-level visual primitives fixed
+    and learns only how articulator states evolve across time. Across sign-to-English translation,
+    isolated sign recognition and fingerspelling detection, SignDino provides a strong public
+    self-supervised representation and shows competitive or state-of-the-art performance under
+    matched downstream evaluation.</p>
+
+  <div class="pillars">
+    <div class="pillar">
+      <span class="n">01</span>
+      <h4>Temporal-axis DINO</h4>
+      <p>Per-frame articulator tokens replace spatial patch tokens; multi-temporal-crop replaces
+        multi-spatial-crop; iBOT masks frames rather than patches.</p>
+    </div>
+    <div class="pillar">
+      <span class="n">02</span>
+      <h4>Three anatomical streams</h4>
+      <p>Left hand, right hand and face are encoded independently over time and fused only at the
+        downstream head, so each stream learns its own dynamics.</p>
+    </div>
+    <div class="pillar">
+      <span class="n">03</span>
+      <h4>Detector-first crops</h4>
+      <p>YOLOv8n + ByteTrack recovers hands that per-frame detection misses under motion blur and
+        self-occlusion, instead of relying on pose-driven crops.</p>
+    </div>
+  </div>
+</section>
+
+<section id="method">
+  <h2>Method</h2>
+  <p>SignDino is three independently trained per-stream SSL encoders sharing one upstream
+    anatomical-crop pipeline. A frozen DINOv3 ViT-B/16 turns every per-frame crop into a 768-d CLS
+    vector once, and the vectors are cached; the student and teacher are small temporal Transformers
+    on top of that cache. Only <b>≈30M parameters</b> ever receive an SSL gradient, and the image
+    backbone receives none.</p>
+
+  <figure>
+    <img src="static/pipeline.png" alt="SignDino pipeline: video to YOLOv8n plus ByteTrack to per-frame anatomical streams, then a frozen DINOv3 encoder to per-frame embeddings, then per-stream temporal SSL, then downstream heads.">
+    <figcaption><b>Full pipeline.</b> Each source video passes through the detector-tracker, yielding
+      synchronised per-frame left-hand, right-hand and face streams. A frozen DINOv3 ViT-B/16 encodes
+      every crop into a 768-d CLS token, giving three per-frame embedding sequences that each feed one
+      independent temporal SSL trainer. The stage-2 teachers become the per-stream sign encoders that
+      the translation, ISLR and fingerspelling heads consume as fused per-frame features.</figcaption>
+  </figure>
+
+  <h3>The temporal student–teacher game</h3>
+  <p>The teacher sees only long temporal crops of a stream; the student sees both long and short
+    crops, with a random fraction of frame positions replaced by a learnable <code>[MASK]</code>
+    token. Stage 1 combines the crop-level DINO cross-entropy, the frame-level iBOT cross-entropy and
+    the DKoleo spreading term. Stage 2 freezes a snapshot of the teacher as a <em class="term">Gram
+    teacher</em> and adds a loss that matches the student's frame-to-frame similarity matrix to the
+    snapshot's — preserving which <em>frames</em> of a clip are alike, which is the structure that
+    fingerspelling and continuous translation rely on.</p>
+
+  <figure>
+    <img src="static/student_teacher.png" alt="Diagram of the temporal student/teacher game: global and local crops, EMA teacher with Sinkhorn-Knopp, student with softmax, stage 1 losses and stage 2 Gram anchoring.">
+    <figcaption><b>Temporal student/teacher game for one anatomical stream.</b> The frozen DINOv3
+      backbone supplies per-frame embeddings once; the SSL game runs entirely on top of them. The
+      teacher is the EMA of the student.</figcaption>
+  </figure>
+
+  <h3>Why the detector-tracker matters</h3>
+  <p>Single-frame detection drops hands under fast motion and self-occlusion. ByteTrack's Kalman fill
+    recovers them, reaching ~95% per-frame hand detection on How2Sign. Removing it costs
+    <b>−1.5 BLEU</b> on How2Sign and <b>−0.094 R@1</b> on ASL Citizen.</p>
+
+  <figure>
+    <img src="static/yolotrack.png" alt="Six OpenASL frames shown twice: YOLOv8n alone on top misses hands that YOLOv8n plus ByteTrack recovers on the bottom.">
+    <figcaption><b>Detector-first crops recover hands YOLOv8n alone misses.</b> Same frame under
+      YOLOv8n only (top) and YOLOv8n + ByteTrack with Kalman fill (bottom). Green boxes are active
+      detections; magenta are tracker predictions for hands the detector missed at that frame.</figcaption>
+  </figure>
+</section>
+
+<section id="results">
+  <h2>Results</h2>
+  <p>Everything below follows the SHuBERT public-data protocol: the same 984 source hours of
+    decontaminated YouTube-ASL, the same downstream datasets, task heads, schedules and metrics. Only
+    the upstream representation changes.</p>
+
+  <h3>Sign language translation</h3>
+  <div class="tablewrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Method</th><th>PT hrs</th>
+          <th>How2Sign BLEU</th><th>How2Sign BLEURT</th>
+          <th>OpenASL BLEU</th><th>FLEURS-ASL BLEU</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>YouTube-ASL fine-tune</td><td>984</td><td>12.4</td><td>46.6</td><td>—</td><td>—</td></tr>
+        <tr><td>YouTube-SL-25</td><td>3207</td><td>15.4</td><td>47.9</td><td>—</td><td>4.4</td></tr>
+        <tr><td>SSVP-SLT</td><td>1054</td><td>15.5</td><td>49.6</td><td>—</td><td>—</td></tr>
+        <tr><td>Uni-Sign</td><td>984</td><td>14.9</td><td>49.4</td><td>23.1</td><td>—</td></tr>
+        <tr><td>SHuBERT</td><td>984</td><td>16.2</td><td>49.9</td><td>23.2</td><td>4.7</td></tr>
+        <tr class="oursrow"><td><b>SignDino</b> (frozen)</td><td>984</td><td class="ours">16.8</td><td class="ours">50.4</td><td class="ours">23.6</td><td class="ours">4.9</td></tr>
+        <tr class="oursrow"><td><b>SignDino</b> (live fine-tune)</td><td>984</td><td class="ours">17.9</td><td class="ours">51.3</td><td class="ours">24.5</td><td class="ours">5.3</td></tr>
+      </tbody>
+      <caption>Corpus BLEU-4 and BLEURT-20. FLEURS-ASL is zero-shot. The <b>frozen</b> row already
+        beats the previous live-fine-tuned state of the art, so the temporal-axis features carry the
+        signal without any encoder adaptation.</caption>
+    </table>
+  </div>
+
+  <h3>Isolated sign recognition &amp; fingerspelling</h3>
+  <div class="tablewrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Method</th><th>Trainable</th>
+          <th>ASL Citizen R@1</th><th>Sem-Lex R@1</th>
+          <th>WLASL2000 P-I</th><th>ASL-STEM mIoU</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>I3D</td><td>25M</td><td>0.63</td><td>—</td><td>—</td><td>—</td></tr>
+        <tr><td>SignCLIP</td><td>217M</td><td>0.60</td><td>0.30</td><td>—</td><td>—</td></tr>
+        <tr><td>Uni-Sign</td><td>580M</td><td>—</td><td>—</td><td>63.52</td><td>—</td></tr>
+        <tr><td>SHuBERT (rank-1 LoRA)</td><td>0.17M</td><td>0.65</td><td>0.54</td><td>60.90</td><td>0.40</td></tr>
+        <tr class="oursrow"><td><b>SignDino</b> (rank-1 LoRA)</td><td>0.17M</td><td class="ours">0.67</td><td class="ours">0.56</td><td class="ours">66.9</td><td class="ours">0.41</td></tr>
+        <tr class="oursrow"><td><b>SignDino</b> (full fine-tune)</td><td>all</td><td class="ours">0.704</td><td class="ours">0.593</td><td class="ours">68.5</td><td class="ours">0.43</td></tr>
+      </tbody>
+      <caption>At the matched 0.17M-parameter LoRA operating point SignDino beats Uni-Sign on
+        WLASL2000 by +3.3 P-I with roughly one one-thousandth of its trainable parameters.</caption>
+    </table>
+  </div>
+
+  <h3>Phonological feature probing</h3>
+  <p>Sixteen ASL-Lex 2.0 feature classifiers, trained on frozen features, ask whether the
+    representation preserves <em>sub-lexical</em> structure rather than only whole-sign identity.
+    SignDino improves on every one of the sixteen features, with the largest gains on the temporally
+    articulated ones — path movement, wrist twist, repeated movement.</p>
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th>Average over 16 features</th><th>Sem-Lex R@1</th><th>ASL Citizen R@1</th></tr></thead>
+      <tbody>
+        <tr><td>SHuBERT</td><td>79.38</td><td>85.02</td></tr>
+        <tr class="oursrow"><td><b>SignDino</b></td><td class="ours">87.64 <span class="delta">+8.26</span></td><td class="ours">91.85 <span class="delta">+6.83</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>What the encoder learns</h3>
+  <figure>
+    <img src="static/clusters_rh.png" alt="Five k-means clusters of right-hand features, each row showing ten nearest-to-centroid crops sharing a handshape across different signers and backgrounds.">
+    <figcaption><b>Zero-shot clusters on held-out frames.</b> Each hand stream surfaces
+      <em>handshape</em> clusters — pointing, spread fingers, thumb-up, two-hand contact — that recur
+      across many signers, backgrounds and skin tones, evidence that the encoder internalises
+      articulator structure rather than identity or background.</figcaption>
+  </figure>
+  <figure>
+    <img src="static/signdino_tsne.png" alt="Two t-SNE panels: family-relation nouns cluster centrally with weather nouns far away; perception verbs, motion verbs and sleep occupy distinct regions.">
+    <figcaption><b>Cross-sentence t-SNE after translation fine-tuning.</b> Family-relation nouns
+      concentrate while weather nouns sit far away (left); perception verbs, motion verbs and
+      <i>sleep</i> occupy distinct regions (right).</figcaption>
+  </figure>
+</section>
+
+<section id="code">
+  <h2>Code</h2>
+  <p>The full implementation — SSL losses, the temporal encoder, the multi-temporal-crop sampler, the
+    embedding cache, and all three downstream heads — is on
+    <a href="https://github.com/junyi2005/signdino">GitHub</a> under the MIT licence. The YAML configs
+    match the paper's hyperparameter card line by line.</p>
+<pre>git clone https://github.com/junyi2005/signdino.git
+cd signdino &amp;&amp; pip install -r requirements.txt
+
+python smoke_test.py                       # synthetic end-to-end check, no data needed
+
+python preprocess/cache_embeddings.py --crop-root /path/to/CROPS   # one-off frozen-DINOv3 cache
+python train.py --config configs/pretrain.yaml --stream lh --exp-name pretrain_lh   # stage 1
+python train.py --config configs/refine.yaml   --stream lh --exp-name refine_lh \
+    --init-ckpt runs/pretrain_lh/ckpt_e100.pt                                       # stage 2</pre>
+  <p>Datasets and third-party checkpoints (DINOv3, ByT5-Base, BLEURT-20, the YOLOv8n detectors) are
+    not redistributed here; obtain each from its official release under its own terms.</p>
+</section>
+
+<section id="citation">
+  <h2>Citation</h2>
+<pre>@article{hu2026signdino,
+  title   = {SignDino: Self-Supervised Sign Language Representation Learning
+             via Temporal-Axis Self-Distillation},
+  author  = {Hu, Junyi and He, Zhewen and Huang, Haomian and Li, Zhenghua and
+             Li, Zhifei and Fang, Yi},
+  journal = {arXiv preprint},
+  year    = {2026}
+}</pre>
+</section>
+
+<footer>
+  <p>New York University Abu Dhabi &nbsp;·&nbsp;
+     <a href="https://github.com/junyi2005/signdino">github.com/junyi2005/signdino</a> &nbsp;·&nbsp;
+     <a href="mailto:jh10472@nyu.edu">jh10472@nyu.edu</a></p>
+</footer>
+
+</div>
+</body>
+</html>
