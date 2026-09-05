@@ -2,7 +2,7 @@
 
 **Self-Supervised Sign Language Representation Learning via Temporal-Axis Self-Distillation**
 
-Junyi Hu, Zhewen He, Haomian Huang, Zhenghua Li, Zhifei Li, Yi Fang<sup>†</sup>
+Junyi Hu, Zhewen He, Haomian Huang, Zhenhua Li, Zhifei Li, Yi Fang<sup>†</sup>
 New York University Abu Dhabi · <sup>†</sup>corresponding author
 
 [**Project page**](https://junyi2005.github.io/signdino/) · [**Paper (arXiv)**](https://junyi2005.github.io/signdino/) · [**BibTeX**](#citation)
@@ -196,7 +196,7 @@ for stage 2, and a one-off ≈300 GPU-hours for the embedding cache.
 @article{hu2026signdino,
   title   = {SignDino: Self-Supervised Sign Language Representation Learning
              via Temporal-Axis Self-Distillation},
-  author  = {Hu, Junyi and He, Zhewen and Huang, Haomian and Li, Zhenghua and
+  author  = {Hu, Junyi and He, Zhewen and Huang, Haomian and Li, Zhenhua and
              Li, Zhifei and Fang, Yi},
   journal = {arXiv preprint},
   year    = {2026}
