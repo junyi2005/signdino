@@ -243,22 +243,26 @@
 
 <section id="abstract">
   <h2>Abstract</h2>
-  <p class="lead">Self-supervised sign language representation learning must model two properties
-    that are not central to natural-image SSL: signs are produced by a small set of anatomically
-    distinct articulators, and their meaning depends on the temporal organisation of those
-    articulators.</p>
-  <p>We introduce <b>SignDino</b>, a self-supervised sign-video encoder that moves the DINOv3
-    student–teacher recipe from the spatial domain of image crops to the temporal domain of tracked
-    sign streams. Each video is decomposed into left-hand, right-hand and face streams by a
-    detector-first YOLOv8n + ByteTrack pipeline. A <em class="term">frozen</em> DINOv3 ViT-B/16 embeds
-    each per-frame anatomical crop, while lightweight temporal Transformers — not the image backbone —
-    form the student and EMA teacher, trained by temporal DINO self-distillation, frame-level
-    masked-token prediction in the style of iBOT, KoLeo feature spreading, and Gram anchoring of the
-    frame-to-frame similarity structure. This design keeps strong image-level visual primitives fixed
-    and learns only how articulator states evolve across time. Across sign-to-English translation,
-    isolated sign recognition and fingerspelling detection, SignDino provides a strong public
-    self-supervised representation and shows competitive or state-of-the-art performance under
-    matched downstream evaluation.</p>
+  <p class="lead">Self-supervised vision learns structure by playing a local–global game across the
+    <em>spatial</em> axis of an image: a crop and the whole picture are asked to agree. Structured motion has
+    an axis of its own, and the same game should be playable along it — where the counterpart of a local crop
+    is not another view of the same frame, but a shorter temporal view of the same tracked part.</p>
+  <p>We introduce <b>SignDino</b>, which moves the DINOv3 student–teacher recipe from the spatial domain of
+    image crops to the temporal domain of tracked streams. Two properties of a moving body drive the design,
+    and neither is specific to sign: motion is produced by a small set of anatomically distinct parts, and
+    meaning lives in how those parts are organised over time. Each video is therefore decomposed into
+    left-hand, right-hand and face streams by a detector-first YOLOv8n + ByteTrack pipeline; a
+    <em class="term">frozen</em> DINOv3 ViT-B/16 embeds each per-frame crop once; and the only trained
+    components are lightweight temporal Transformers forming the student and EMA teacher.</p>
+  <p>Every term in the objective — temporal DINO self-distillation, iBOT-style masked-frame prediction, KoLeo
+    feature spreading, Gram anchoring of the frame-to-frame similarity structure — is inherited unchanged from
+    image self-supervision. What changed is the axis the local–global game is played on. Strong image-level
+    primitives stay fixed and the model learns only how articulator states evolve across time. Sign language
+    is where we evaluate rather than what the method was built to fit: across sign-to-English translation,
+    isolated sign recognition and fingerspelling detection, SignDino provides a strong public self-supervised
+    representation and is competitive with or ahead of the state of the art under matched downstream
+    evaluation — and the phonological probe, where all sixteen ASL-Lex features improve, is the result that
+    says what the representation actually learned.</p>
 
   <div class="pillars">
     <div class="pillar">
